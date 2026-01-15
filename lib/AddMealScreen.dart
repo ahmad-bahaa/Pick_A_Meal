@@ -1,0 +1,140 @@
+import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'Meal.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart' as syspaths;
+
+class AddMealscreen extends StatefulWidget {
+  @override
+  State<AddMealscreen> createState() => _AddMealscreenState();
+}
+
+class _AddMealscreenState extends State<AddMealscreen> {
+  final nameController = TextEditingController();
+
+  final descController = TextEditingController();
+
+  final imageController = TextEditingController();
+
+  File? _selectedImage;
+
+  Future<void> _pickImage(ImageSource source) async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(
+      source: source,
+      maxWidth: 600, // Optimize image size for performance
+
+    );
+
+    if (pickedFile != null) {
+      final appDir = await syspaths.getApplicationDocumentsDirectory();
+      final fileName = path.basename(pickedFile.path);
+      final savedImage = await File(pickedFile.path).copy('${appDir.path}/$fileName');
+      setState(() {
+        _selectedImage = savedImage;
+       // _selectedImage = File(pickedFile.path);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Add New Meal')),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: EdgeInsets.all(15),
+          child: Column(
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: InputDecoration(labelText: 'Meal Name*', border: OutlineInputBorder()),
+              ),
+              SizedBox(height: 15),
+              Column(
+                children: [
+                  GestureDetector(
+                    onTap: () => _showPickerOptions(context),
+                    // onPressed: () => _showPickerOptions(context),
+                    child: Container(
+                      height: 150,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(12),
+                        image: _selectedImage != null
+                            ? DecorationImage(image: FileImage(_selectedImage!), fit: BoxFit.cover)
+                            : null,
+                      ),
+                      child: _selectedImage == null
+                          ? Icon(Icons.camera_alt, size: 50, color: Colors.grey)
+                          : null,
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: () => _showPickerOptions(context),
+                    icon: Icon(Icons.add_a_photo),
+                    label: Text("Add Meal Photo"),
+                  ),
+                ],
+              ),
+              SizedBox(height: 15),
+              TextField(
+                controller: descController,
+                maxLines: 3,
+                decoration: InputDecoration(labelText: 'Description (Optional)', border: OutlineInputBorder()),
+              ),
+              SizedBox(height: 20),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(minimumSize: Size(double.infinity, 50)),
+                onPressed: () {
+                  if (nameController.text.isEmpty) return;
+                  final newMeal = Meal(
+                    id: DateTime.now().toString(),
+                    name: nameController.text,
+                    description: descController.text,
+                    imagePath: _selectedImage != null ? _selectedImage!.path : null,
+                    // imageUrl: imageController.text.isEmpty ? null : imageController.text,
+                  );
+                  Navigator.pop(context, newMeal);
+                },
+                child: Text('Save Meal'),
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  void _showPickerOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: Icon(Icons.photo_library),
+                title: Text('Photo Library'),
+                onTap: () {
+                  _pickImage(ImageSource.gallery); // Call the picker with Gallery
+                  Navigator.of(context).pop();    // Close the menu
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.photo_camera),
+                title: Text('Camera'),
+                onTap: () {
+                  _pickImage(ImageSource.camera);  // Call the picker with Camera
+                  Navigator.of(context).pop();    // Close the menu
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+}
