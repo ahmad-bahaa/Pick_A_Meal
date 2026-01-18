@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'AddMealScreen.dart';
 import 'Meal.dart';
 
 class MealDetailsScreen extends StatelessWidget {
@@ -10,7 +11,33 @@ class MealDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(meal.name)),
+      appBar: AppBar(
+        title: Text(meal.name),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.edit),
+            onPressed: () async {
+              // 1. Open the Edit Screen
+              final updatedMeal = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AddMealscreen(existingMeal: meal),
+                ),
+              );
+
+              // 2. If the user actually saved changes (result is not null)
+              if (updatedMeal != null && updatedMeal is Meal) {
+                // 3. Close the detail screen and send the updated meal to the main list
+                Navigator.pop(context, updatedMeal);
+              }
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.delete, color: Colors.red),
+            onPressed: () => _confirmDelete(context),
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -61,6 +88,33 @@ class MealDetailsScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // Confirmation Dialog
+  void _confirmDelete(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text("Delete Meal"),
+        content: Text("Are you sure you want to remove this meal?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx); // Close dialog
+              Navigator.pop(
+                context,
+                'delete',
+              ); // Return 'delete' signal to main screen
+            },
+            child: Text("Delete", style: TextStyle(color: Colors.red)),
+          ),
+        ],
       ),
     );
   }

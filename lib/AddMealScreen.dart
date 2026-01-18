@@ -6,34 +6,53 @@ import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart' as syspaths;
 
 class AddMealscreen extends StatefulWidget {
+  final Meal? existingMeal;
+
+  const AddMealscreen({super.key, this.existingMeal});
   @override
   State<AddMealscreen> createState() => _AddMealscreenState();
 }
 
 class _AddMealscreenState extends State<AddMealscreen> {
-  final nameController = TextEditingController();
+  late  TextEditingController nameController;
 
-  final descController = TextEditingController();
+  late TextEditingController descController = TextEditingController();
 
   final imageController = TextEditingController();
 
   File? _selectedImage;
+
+  @override
+  void initState() {
+    super.initState();
+    // Pre-fill if editing
+    nameController = TextEditingController(
+      text: widget.existingMeal?.name ?? '',
+    );
+    descController = TextEditingController(
+      text: widget.existingMeal?.description ?? '',
+    );
+    if (widget.existingMeal?.imagePath != null) {
+      _selectedImage = File(widget.existingMeal!.imagePath!);
+    }
+  }
 
   Future<void> _pickImage(ImageSource source) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(
       source: source,
       maxWidth: 600, // Optimize image size for performance
-
     );
 
     if (pickedFile != null) {
       final appDir = await syspaths.getApplicationDocumentsDirectory();
       final fileName = path.basename(pickedFile.path);
-      final savedImage = await File(pickedFile.path).copy('${appDir.path}/$fileName');
+      final savedImage = await File(
+        pickedFile.path,
+      ).copy('${appDir.path}/$fileName');
       setState(() {
         _selectedImage = savedImage;
-       // _selectedImage = File(pickedFile.path);
+        // _selectedImage = File(pickedFile.path);
       });
     }
   }
@@ -41,7 +60,7 @@ class _AddMealscreenState extends State<AddMealscreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Add New Meal')),
+      appBar: AppBar(title:Text(widget.existingMeal == null ? 'Add Meal' : 'Edit Meal')),
       body: SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.all(15),
@@ -49,7 +68,10 @@ class _AddMealscreenState extends State<AddMealscreen> {
             children: [
               TextField(
                 controller: nameController,
-                decoration: InputDecoration(labelText: 'Meal Name*', border: OutlineInputBorder()),
+                decoration: InputDecoration(
+                  labelText: 'Meal Name*',
+                  border: OutlineInputBorder(),
+                ),
               ),
               SizedBox(height: 15),
               Column(
@@ -64,7 +86,10 @@ class _AddMealscreenState extends State<AddMealscreen> {
                         color: Colors.grey[200],
                         borderRadius: BorderRadius.circular(12),
                         image: _selectedImage != null
-                            ? DecorationImage(image: FileImage(_selectedImage!), fit: BoxFit.cover)
+                            ? DecorationImage(
+                                image: FileImage(_selectedImage!),
+                                fit: BoxFit.cover,
+                              )
                             : null,
                       ),
                       child: _selectedImage == null
@@ -83,30 +108,38 @@ class _AddMealscreenState extends State<AddMealscreen> {
               TextField(
                 controller: descController,
                 maxLines: 3,
-                decoration: InputDecoration(labelText: 'Description (Optional)', border: OutlineInputBorder()),
+                decoration: InputDecoration(
+                  labelText: 'Description (Optional)',
+                  border: OutlineInputBorder(),
+                ),
               ),
               SizedBox(height: 20),
               ElevatedButton(
-                style: ElevatedButton.styleFrom(minimumSize: Size(double.infinity, 50)),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: Size(double.infinity, 50),
+                ),
                 onPressed: () {
                   if (nameController.text.isEmpty) return;
-                  final newMeal = Meal(
-                    id: DateTime.now().toString(),
+                  final updatedMeal = Meal(
+                    id: widget.existingMeal?.id ?? DateTime.now().toString(),
                     name: nameController.text,
                     description: descController.text,
-                    imagePath: _selectedImage != null ? _selectedImage!.path : null,
+                    imagePath: _selectedImage != null
+                        ? _selectedImage!.path
+                        : null,
                     // imageUrl: imageController.text.isEmpty ? null : imageController.text,
                   );
-                  Navigator.pop(context, newMeal);
+                  Navigator.pop(context, updatedMeal);
                 },
-                child: Text('Save Meal'),
-              )
+                child: Text(widget.existingMeal == null ? 'Add Meal' : 'Save Changes'),
+              ),
             ],
           ),
         ),
       ),
     );
   }
+
   void _showPickerOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -118,16 +151,18 @@ class _AddMealscreenState extends State<AddMealscreen> {
                 leading: Icon(Icons.photo_library),
                 title: Text('Photo Library'),
                 onTap: () {
-                  _pickImage(ImageSource.gallery); // Call the picker with Gallery
-                  Navigator.of(context).pop();    // Close the menu
+                  _pickImage(
+                    ImageSource.gallery,
+                  ); // Call the picker with Gallery
+                  Navigator.of(context).pop(); // Close the menu
                 },
               ),
               ListTile(
                 leading: Icon(Icons.photo_camera),
                 title: Text('Camera'),
                 onTap: () {
-                  _pickImage(ImageSource.camera);  // Call the picker with Camera
-                  Navigator.of(context).pop();    // Close the menu
+                  _pickImage(ImageSource.camera); // Call the picker with Camera
+                  Navigator.of(context).pop(); // Close the menu
                 },
               ),
             ],
@@ -136,5 +171,4 @@ class _AddMealscreenState extends State<AddMealscreen> {
       },
     );
   }
-
 }
