@@ -19,6 +19,7 @@ class _AddMealscreenState extends State<AddMealscreen> {
   late TextEditingController descController = TextEditingController();
 
   final imageController = TextEditingController();
+  String _selectedCategory = mealCategories[1]; // Default to 'Meat'
 
   File? _selectedImage;
 
@@ -35,6 +36,7 @@ class _AddMealscreenState extends State<AddMealscreen> {
     if (widget.existingMeal?.imagePath != null) {
       _selectedImage = File(widget.existingMeal!.imagePath!);
     }
+    _selectedCategory = widget.existingMeal?.category ?? 'Meat'; // Default to 'Meat'
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -113,6 +115,20 @@ class _AddMealscreenState extends State<AddMealscreen> {
                   border: OutlineInputBorder(),
                 ),
               ),
+              SizedBox(height: 15),
+
+              DropdownButtonFormField<String>(
+                value: _selectedCategory,
+                decoration: InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
+                items: mealCategories.where((c) => c != 'All').map((String category) {
+                  return DropdownMenuItem(value: category, child: Text(category));
+                }).toList(),
+                onChanged: (newValue) {
+                  setState(() {
+                    _selectedCategory = newValue!;
+                  });
+                },
+              ),
               SizedBox(height: 20),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
@@ -123,6 +139,7 @@ class _AddMealscreenState extends State<AddMealscreen> {
                   final updatedMeal = Meal(
                     id: widget.existingMeal?.id ?? DateTime.now().toString(),
                     name: nameController.text,
+                    category: _selectedCategory,
                     description: descController.text,
                     imagePath: _selectedImage != null
                         ? _selectedImage!.path

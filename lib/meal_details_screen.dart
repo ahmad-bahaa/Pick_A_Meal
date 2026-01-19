@@ -71,6 +71,21 @@ class MealDetailsScreen extends StatelessWidget {
                   SizedBox(height: 10),
                   Divider(),
                   SizedBox(height: 10),
+                  Text(
+                    "Category",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    meal.category?.isNotEmpty == true
+                        ? meal.category!
+                        : "No Category",
+                    style: TextStyle(fontSize: 16, color: Colors.black87),
+                  ),
+
+                  SizedBox(height: 10),
+                  Divider(),
+                  SizedBox(height: 10),
 
                   Text(
                     "Description",
