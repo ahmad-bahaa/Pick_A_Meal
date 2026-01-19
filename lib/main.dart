@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:eating/Meal.dart';
-import 'package:eating/AddMealScreen.dart';
+import 'package:eating/meal.dart';
+import 'package:eating/add_meal_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -181,7 +181,7 @@ class _MealListScreenState extends State<MealListScreen> {
   void _showAddMealScreen(BuildContext context) async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => AddMealscreen()),
+      MaterialPageRoute(builder: (context) => AddMealScreen()),
     );
 
     if (!mounted) return;

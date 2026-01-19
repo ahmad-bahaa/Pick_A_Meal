@@ -44,6 +44,8 @@ dev_dependencies:
     sdk: flutter
   flutter_launcher_icons: "^0.13.1"
 
+  flutter_native_splash: ^2.4.0
+
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your
@@ -53,10 +55,14 @@ dev_dependencies:
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
-flutter_icons:
+flutter_launcher_icons:
   android: "launcher_icon"
-  ios: true
-  image_path: "assets/icon/icon.png"
+  ios: false  # Change to 'false' if you aren't building for iOS right now
+  image_path: "assets/icon/logo.png"
+  remove_alpha_ios: true # This fixes the 'alpha channel' warning in your terminal
+    # For Android 12+ support, add these:
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/icon/logo.png"
 # The following section is specific to Flutter packages.
 flutter:
 
@@ -95,3 +101,10 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+flutter_native_splash:
+  color: "#4CAF50" # Your foodie green color
+  image: assets/icon/logo.png
+  android_12:
+    image: assets/icon/logo.png
+    color: "#4CAF50"
+  fullscreen: true

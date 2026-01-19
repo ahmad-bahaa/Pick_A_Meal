@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import 'AddMealScreen.dart';
-import 'Meal.dart';
+import 'add_meal_screen.dart';
+import 'meal.dart';
 
 class MealDetailsScreen extends StatelessWidget {
   final Meal meal;
 
-  MealDetailsScreen({required this.meal});
+  MealDetailsScreen({super.key, required this.meal});
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +21,7 @@ class MealDetailsScreen extends StatelessWidget {
               final updatedMeal = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => AddMealscreen(existingMeal: meal),
+                  builder: (context) => AddMealScreen(existingMeal: meal),
                 ),
               );
 
@@ -77,8 +77,8 @@ class MealDetailsScreen extends StatelessWidget {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    meal.category?.isNotEmpty == true
-                        ? meal.category!
+                    meal.category.isNotEmpty == true
+                        ? meal.category
                         : "No Category",
                     style: TextStyle(fontSize: 16, color: Colors.black87),
                   ),

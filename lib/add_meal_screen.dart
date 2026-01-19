@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
-import 'Meal.dart';
+import 'meal.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart' as syspaths;
 
-class AddMealscreen extends StatefulWidget {
+class AddMealScreen extends StatefulWidget {
   final Meal? existingMeal;
 
-  const AddMealscreen({super.key, this.existingMeal});
+  const AddMealScreen({super.key, this.existingMeal});
   @override
-  State<AddMealscreen> createState() => _AddMealscreenState();
+  State<AddMealScreen> createState() => _AddMealscreenState();
 }
 
-class _AddMealscreenState extends State<AddMealscreen> {
+class _AddMealscreenState extends State<AddMealScreen> {
   late  TextEditingController nameController;
 
   late TextEditingController descController = TextEditingController();
@@ -118,7 +118,8 @@ class _AddMealscreenState extends State<AddMealscreen> {
               SizedBox(height: 15),
 
               DropdownButtonFormField<String>(
-                value: _selectedCategory,
+                initialValue: _selectedCategory,
+
                 decoration: InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
                 items: mealCategories.where((c) => c != 'All').map((String category) {
                   return DropdownMenuItem(value: category, child: Text(category));
