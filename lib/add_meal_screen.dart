@@ -152,9 +152,10 @@ class _AddMealscreenState extends State<AddMealScreen> {
                 ),
                 onPressed: () {
                   if (nameController.text.isEmpty) return;
+                  String name = nameController.text;
                   final updatedMeal = Meal(
                     id: widget.existingMeal?.id ?? DateTime.now().toString(),
-                    name: nameController.text,
+                    name: name[0].toUpperCase() + name.substring(1),
                     category: _selectedCategory,
                     description: descController.text,
                     imagePath: _selectedImage != null

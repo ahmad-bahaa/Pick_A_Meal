@@ -291,7 +291,7 @@ class _MealListScreenState extends State<MealListScreen> {
                                               fit: BoxFit.cover,
                                             ),
                                           )
-                                        : Icon(Icons.fastfood, size: 40),
+                                        : Icon(Icons.restaurant, size: 40),
                                   ),
                                   title: Text(
                                     meal.name,

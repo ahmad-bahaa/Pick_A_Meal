@@ -154,20 +154,23 @@ class _MealDetailsScreenState extends State<MealDetailsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Hero(
-                tag: _currentMeal.id,
-                child: _currentMeal.imagePath != null
-                    ? Image.file(
-                        File(_currentMeal.imagePath!),
-                        width: double.infinity,
-                        height: 300,
-                        fit: BoxFit.cover,
-                      )
-                    : Container(
-                        height: 200,
-                        color: Colors.grey[300],
-                        child: Icon(Icons.fastfood, size: 50),
-                      ),
+              Center(
+                child: Hero(
+                  tag: _currentMeal.id,
+                  child: _currentMeal.imagePath != null
+                      ? Image.file(
+                          File(_currentMeal.imagePath!),
+                          width: double.infinity,
+                          height: 300,
+                          fit: BoxFit.cover,
+                        )
+                      : Container(
+                          height: 200,
+                          width: 200,
+                          // color: Colors.grey[100],
+                          child: Icon(Icons.restaurant, size: 200),
+                        ),
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -192,7 +195,7 @@ class _MealDetailsScreenState extends State<MealDetailsScreen> {
                       _currentMeal.category.isNotEmpty == true
                           ? _currentMeal.category
                           : "No Category",
-                      style: TextStyle(fontSize: 16, color: Colors.black87),
+                      style: TextStyle(fontSize: 16,),
                     ),
                     SizedBox(height: 10),
                     Divider(),
@@ -206,7 +209,7 @@ class _MealDetailsScreenState extends State<MealDetailsScreen> {
                       _currentMeal.description?.isNotEmpty == true
                           ? _currentMeal.description!
                           : "No description provided for this meal.",
-                      style: TextStyle(fontSize: 16, color: Colors.black87),
+                      style: TextStyle(fontSize: 16,),
                     ),
                     SizedBox(height: 10),
                     Divider(),
