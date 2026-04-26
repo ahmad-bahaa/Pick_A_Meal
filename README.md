@@ -36,7 +36,7 @@ Pick A Meal is a Flutter application designed to help users organize their meals
 
 1.  **Clone the repository**:
     ```bash
-    git clone https://github.com/your-username/pick-a-meal.git
+    git clone https://github.com/ahmad-bahaa//pick-a-meal.git
     cd pick-a-meal
     ```
 
@@ -56,8 +56,8 @@ To use the AI recipe generation feature, you can provide your own Gemini API key
 
 ## 👨‍💻 Developer
 
-- **Name**: Ahmad
-- **Email**: ahmad@example.com
+- **Name**: Ahmad Bahaa
+- **Email**: Ahmad.Bahaa.Scr@gmail.com
 
 ## 📄 License
 
