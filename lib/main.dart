@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:eating/meal.dart';
 import 'package:eating/add_meal_screen.dart';
+import 'package:eating/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -21,25 +22,54 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  // This widget is the root of your application.
+  ThemeMode _themeMode = ThemeMode.system;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTheme();
+  }
+
+  Future<void> _loadTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    final themeIndex = prefs.getInt('theme_mode') ?? 0;
+    setState(() {
+      _themeMode = ThemeMode.values[themeIndex];
+    });
+  }
+
+  void _updateTheme(ThemeMode mode) {
+    setState(() {
+      _themeMode = mode;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Pick A Meal',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+        useMaterial3: true,
       ),
+      darkTheme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.green,
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
+      ),
+      themeMode: _themeMode,
       debugShowCheckedModeBanner: false,
-      home: const MealListScreen(title: 'Flutter Demo Home Page'),
+      home: MealListScreen(onThemeChanged: _updateTheme),
     );
   }
 }
 
 class MealListScreen extends StatefulWidget {
-  const MealListScreen({super.key, required this.title});
+  const MealListScreen({super.key, required this.onThemeChanged});
 
-  final String title;
+  final Function(ThemeMode) onThemeChanged;
 
   @override
   State<MealListScreen> createState() => _MealListScreenState();
@@ -48,6 +78,53 @@ class MealListScreen extends StatefulWidget {
 class _MealListScreenState extends State<MealListScreen> {
   final List<Meal> _meals = [];
   String _filterCategory = 'All';
+  final TextEditingController _searchController = TextEditingController();
+  bool _isSearching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFromStorage();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    setState(() {});
+    _checkSearchResults();
+  }
+
+  void _checkSearchResults() {
+    try {
+      final query = _searchController.text.toLowerCase();
+      if (query.isEmpty) return;
+
+      final results = _meals.where((meal) {
+        final matchesCategory = _filterCategory == 'All' || meal.category == _filterCategory;
+        final matchesSearch = meal.name.toLowerCase().contains(query) || 
+                              meal.category.toLowerCase().contains(query);
+        return matchesCategory && matchesSearch;
+      }).toList();
+
+      if (results.isEmpty && mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No results found for your search.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Search error: $e')),
+        );
+      }
+    }
+  }
 
   void _addMeal(Meal meal) {
     setState(() {
@@ -58,18 +135,77 @@ class _MealListScreenState extends State<MealListScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Logic: If 'All' is selected, show everything. Otherwise, filter.
-    final filteredMeals = _filterCategory == 'All'
-        ? _meals
-        : _meals.where((meal) => meal.category == _filterCategory).toList();
+    List<Meal> filteredMeals = [];
+    try {
+      final query = _searchController.text.toLowerCase();
+      filteredMeals = _meals.where((meal) {
+        final matchesCategory = _filterCategory == 'All' || meal.category == _filterCategory;
+        final matchesSearch = query.isEmpty || 
+                              meal.name.toLowerCase().contains(query) ||
+                              meal.category.toLowerCase().contains(query);
+        return matchesCategory && matchesSearch;
+      }).toList();
+    } catch (e) {
+      filteredMeals = [];
+    }
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('My Meals'),
+        title: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: _isSearching
+              ? TextField(
+                  key: const ValueKey('searchField'),
+                  controller: _searchController,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: 'Search meals...',
+                    border: InputBorder.none,
+                    suffixIcon: _searchController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () => _searchController.clear(),
+                          )
+                        : null,
+                  ),
+                )
+              : const Text('My Meals', key: ValueKey('title')),
+        ),
         centerTitle: true,
+        leading: _isSearching
+            ? BackButton(
+                onPressed: () {
+                  setState(() {
+                    _isSearching = false;
+                    _searchController.clear();
+                  });
+                },
+              )
+            : IconButton(
+                icon: const Icon(Icons.settings),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => SettingsScreen(
+                        onThemeChanged: widget.onThemeChanged,
+                      ),
+                    ),
+                  );
+                },
+              ),
         actions: [
+          if (!_isSearching)
+            IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: () {
+                setState(() {
+                  _isSearching = true;
+                });
+              },
+            ),
           IconButton(
-            icon: Icon(Icons.casino), // Dice icon for randomness
+            icon: const Icon(Icons.casino), // Dice icon for randomness
             onPressed: _meals.isEmpty ? null : () => _pickRandomMeal(context),
           ),
         ],
@@ -201,15 +337,23 @@ class _MealListScreenState extends State<MealListScreen> {
   }
 
   Future<void> _loadFromStorage() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? mealString = prefs.getString('user_meals');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? mealString = prefs.getString('user_meals');
 
-    if (mealString != null) {
-      final List<dynamic> decodedData = jsonDecode(mealString);
-      setState(() {
-        _meals.clear();
-        _meals.addAll(decodedData.map((item) => Meal.fromMap(item)).toList());
-      });
+      if (mealString != null) {
+        final List<dynamic> decodedData = jsonDecode(mealString);
+        setState(() {
+          _meals.clear();
+          _meals.addAll(decodedData.map((item) => Meal.fromMap(item)).toList());
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load meals: $e')),
+        );
+      }
     }
   }
 
@@ -385,11 +529,7 @@ class _MealListScreenState extends State<MealListScreen> {
     }
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _loadFromStorage();
-  }
+
 
   // Create a helper function to build the filter bar
   Widget _buildFilterBar() {
@@ -406,16 +546,9 @@ class _MealListScreenState extends State<MealListScreen> {
               selected: _filterCategory == category,
               onSelected: (selected) {
                 setState(() {
-                  if (selected == "All") {
-
-                      _filterCategory = "ِAll";
-
-                  } else {
-
-                      _filterCategory = category;
-
-
-                  }});
+                  _filterCategory = selected ? category : "All";
+                });
+                _checkSearchResults();
               },
             ),
           );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
 import 'meal.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart' as syspaths;
@@ -9,12 +10,13 @@ class AddMealScreen extends StatefulWidget {
   final Meal? existingMeal;
 
   const AddMealScreen({super.key, this.existingMeal});
+
   @override
   State<AddMealScreen> createState() => _AddMealscreenState();
 }
 
 class _AddMealscreenState extends State<AddMealScreen> {
-  late  TextEditingController nameController;
+  late TextEditingController nameController;
 
   late TextEditingController descController = TextEditingController();
 
@@ -36,7 +38,8 @@ class _AddMealscreenState extends State<AddMealScreen> {
     if (widget.existingMeal?.imagePath != null) {
       _selectedImage = File(widget.existingMeal!.imagePath!);
     }
-    _selectedCategory = widget.existingMeal?.category ?? 'Meat'; // Default to 'Meat'
+    _selectedCategory =
+        widget.existingMeal?.category ?? 'Meat'; // Default to 'Meat'
   }
 
   Future<void> _pickImage(ImageSource source) async {
@@ -62,7 +65,9 @@ class _AddMealscreenState extends State<AddMealScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title:Text(widget.existingMeal == null ? 'Add Meal' : 'Edit Meal')),
+      appBar: AppBar(
+        title: Text(widget.existingMeal == null ? 'Add Meal' : 'Edit Meal'),
+      ),
       body: SingleChildScrollView(
         child: Padding(
           padding: EdgeInsets.all(15),
@@ -70,6 +75,9 @@ class _AddMealscreenState extends State<AddMealScreen> {
             children: [
               TextField(
                 controller: nameController,
+                textCapitalization: TextCapitalization.words,
+                autocorrect: true,
+                enableSuggestions: true,
                 decoration: InputDecoration(
                   labelText: 'Meal Name*',
                   border: OutlineInputBorder(),
@@ -120,9 +128,17 @@ class _AddMealscreenState extends State<AddMealScreen> {
               DropdownButtonFormField<String>(
                 initialValue: _selectedCategory,
 
-                decoration: InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
-                items: mealCategories.where((c) => c != 'All').map((String category) {
-                  return DropdownMenuItem(value: category, child: Text(category));
+                decoration: InputDecoration(
+                  labelText: 'Category',
+                  border: OutlineInputBorder(),
+                ),
+                items: mealCategories.where((c) => c != 'All').map((
+                  String category,
+                ) {
+                  return DropdownMenuItem(
+                    value: category,
+                    child: Text(category),
+                  );
                 }).toList(),
                 onChanged: (newValue) {
                   setState(() {
@@ -149,7 +165,9 @@ class _AddMealscreenState extends State<AddMealScreen> {
                   );
                   Navigator.pop(context, updatedMeal);
                 },
-                child: Text(widget.existingMeal == null ? 'Add Meal' : 'Save Changes'),
+                child: Text(
+                  widget.existingMeal == null ? 'Add Meal' : 'Save Changes',
+                ),
               ),
             ],
           ),

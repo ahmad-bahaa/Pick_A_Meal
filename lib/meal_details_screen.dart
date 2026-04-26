@@ -1,110 +1,84 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'add_meal_screen.dart';
 import 'meal.dart';
+import 'gemini_service.dart';
 
-class MealDetailsScreen extends StatelessWidget {
+class MealDetailsScreen extends StatefulWidget {
   final Meal meal;
 
-  MealDetailsScreen({super.key, required this.meal});
+  const MealDetailsScreen({super.key, required this.meal});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(meal.name),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.edit),
-            onPressed: () async {
-              // 1. Open the Edit Screen
-              final updatedMeal = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AddMealScreen(existingMeal: meal),
-                ),
-              );
+  State<MealDetailsScreen> createState() => _MealDetailsScreenState();
+}
 
-              // 2. If the user actually saved changes (result is not null)
-              if (updatedMeal != null && updatedMeal is Meal) {
-                // 3. Close the detail screen and send the updated meal to the main list
-                Navigator.pop(context, updatedMeal);
-              }
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.delete, color: Colors.red),
-            onPressed: () => _confirmDelete(context),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Hero(
-              tag: meal.id,
-              child: meal.imagePath != null
-                  ? Image.file(
-                      File(meal.imagePath!),
-                      width: double.infinity,
-                      height: 300,
-                      fit: BoxFit.cover,
-                    )
-                  : Container(
-                      height: 200,
-                      color: Colors.grey[300],
-                      child: Icon(Icons.fastfood),
-                    ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    meal.name,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  Divider(),
-                  SizedBox(height: 10),
-                  Text(
-                    "Category",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    meal.category.isNotEmpty == true
-                        ? meal.category
-                        : "No Category",
-                    style: TextStyle(fontSize: 16, color: Colors.black87),
-                  ),
+class _MealDetailsScreenState extends State<MealDetailsScreen> {
+  late Meal _currentMeal;
+  bool _isLoading = false;
 
-                  SizedBox(height: 10),
-                  Divider(),
-                  SizedBox(height: 10),
+  @override
+  void initState() {
+    super.initState();
+    _currentMeal = widget.meal;
+  }
 
-                  Text(
-                    "Description",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    meal.description?.isNotEmpty == true
-                        ? meal.description!
-                        : "No description provided for this meal.",
-                    style: TextStyle(fontSize: 16, color: Colors.black87),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+  Future<void> _updateLocalStorage() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? mealString = prefs.getString('user_meals');
+    if (mealString != null) {
+      final List<dynamic> decodedData = jsonDecode(mealString);
+      final List<Meal> meals = decodedData.map((e) => Meal.fromMap(e)).toList();
+      final index = meals.indexWhere((m) => m.id == _currentMeal.id);
+      if (index != -1) {
+        meals[index] = _currentMeal;
+        await prefs.setString('user_meals', jsonEncode(meals.map((m) => m.toMap()).toList()));
+      }
+    }
+  }
+
+  Future<void> _generateRecipe() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final service = GeminiService();
+      final data = await service.generateRecipe(_currentMeal.name);
+      
+      if (data != null && mounted) {
+        // Extract dynamically retrieved JSON data safely
+        final List<String> newIngredients = List<String>.from(data['ingredients'] ?? []);
+        final String newInstructions = data['instructions']?.toString() ?? "";
+        
+        setState(() {
+          _currentMeal = _currentMeal.copyWith(
+            ingredients: newIngredients,
+            instructions: newInstructions,
+          );
+        });
+        
+        await _updateLocalStorage();
+      } else if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           const SnackBar(content: Text('Failed to generate a recipe or search returned no results.')),
+         );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(content: Text('Error generating recipe: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   // Confirmation Dialog
@@ -130,6 +104,178 @@ class MealDetailsScreen extends StatelessWidget {
             child: Text("Delete", style: TextStyle(color: Colors.red)),
           ),
         ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool needsRecipe = _currentMeal.ingredients == null || _currentMeal.ingredients!.isEmpty;
+
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (bool didPop) {
+        if (didPop) return;
+        Navigator.pop(context, _currentMeal);
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(_currentMeal.name),
+          leading: BackButton(
+            onPressed: () => Navigator.pop(context, _currentMeal),
+          ),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.edit),
+              onPressed: () async {
+                final updatedMeal = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => AddMealScreen(existingMeal: _currentMeal),
+                  ),
+                );
+  
+                if (updatedMeal != null && updatedMeal is Meal) {
+                  setState(() {
+                    _currentMeal = updatedMeal;
+                  });
+                  // also update storage since we edited it
+                  await _updateLocalStorage();
+                }
+              },
+            ),
+            IconButton(
+              icon: Icon(Icons.delete, color: Colors.red),
+              onPressed: () => _confirmDelete(context),
+            ),
+          ],
+        ),
+        body: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Hero(
+                tag: _currentMeal.id,
+                child: _currentMeal.imagePath != null
+                    ? Image.file(
+                        File(_currentMeal.imagePath!),
+                        width: double.infinity,
+                        height: 300,
+                        fit: BoxFit.cover,
+                      )
+                    : Container(
+                        height: 200,
+                        color: Colors.grey[300],
+                        child: Icon(Icons.fastfood, size: 50),
+                      ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _currentMeal.name,
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    Divider(),
+                    SizedBox(height: 10),
+                    Text(
+                      "Category",
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      _currentMeal.category.isNotEmpty == true
+                          ? _currentMeal.category
+                          : "No Category",
+                      style: TextStyle(fontSize: 16, color: Colors.black87),
+                    ),
+                    SizedBox(height: 10),
+                    Divider(),
+                    SizedBox(height: 10),
+                    Text(
+                      "Description",
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      _currentMeal.description?.isNotEmpty == true
+                          ? _currentMeal.description!
+                          : "No description provided for this meal.",
+                      style: TextStyle(fontSize: 16, color: Colors.black87),
+                    ),
+                    SizedBox(height: 10),
+                    Divider(),
+                    
+                    if (!needsRecipe) ...[
+                      SizedBox(height: 10),
+                      Text(
+                        "Ingredients",
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
+                      ),
+                      SizedBox(height: 8),
+                      ..._currentMeal.ingredients!.map((item) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                        child: Row(
+                          children: [
+                            Icon(Icons.circle, size: 8, color: Theme.of(context).colorScheme.primary),
+                            SizedBox(width: 12),
+                            Expanded(child: Text(item, style: TextStyle(fontSize: 16))),
+                          ],
+                        ),
+                      )).toList(),
+                      SizedBox(height: 10),
+                      Divider(),
+                      SizedBox(height: 10),
+                      Text(
+                        "Instructions",
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        _currentMeal.instructions ?? "No instructions available.",
+                        style: TextStyle(fontSize: 16, height: 1.5),
+                      ),
+                      SizedBox(height: 20),
+                    ],
+
+                    if (needsRecipe)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 30.0),
+                          child: _isLoading
+                              ? const CircularProgressIndicator()
+                              : TweenAnimationBuilder<double>(
+                                  tween: Tween<double>(begin: 0.5, end: 1.0),
+                                  duration: const Duration(milliseconds: 1000),
+                                  curve: Curves.elasticOut,
+                                  builder: (context, value, child) {
+                                    return Transform.scale(
+                                      scale: value,
+                                      child: FilledButton.icon(
+                                        icon: const Icon(Icons.auto_awesome),
+                                        label: const Text("Generate Recipe with AI"),
+                                        style: FilledButton.styleFrom(
+                                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                                          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                        ),
+                                        onPressed: _generateRecipe,
+                                      ),
+                                    );
+                                  },
+                                ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
