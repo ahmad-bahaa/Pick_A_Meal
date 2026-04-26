@@ -1,6 +1,6 @@
-# Pick A Meal 🍽️
+# DineDecide 🍽️
 
-Pick A Meal is a Flutter application designed to help users organize their meals, discover new recipes using AI, and solve the "what should I eat?" dilemma with a fun randomizer.
+DineDecide is a Flutter application designed to help users organize their meals, discover new recipes using AI, and solve the "what should I eat?" dilemma with a fun randomizer.
 
 ## ✨ Features
 

@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:eating/meal.dart';
-import 'package:eating/add_meal_screen.dart';
-import 'package:eating/settings_screen.dart';
+import 'package:dinedecide/meal.dart';
+import 'package:dinedecide/add_meal_screen.dart';
+import 'package:dinedecide/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -105,9 +105,11 @@ class _MealListScreenState extends State<MealListScreen> {
       if (query.isEmpty) return;
 
       final results = _meals.where((meal) {
-        final matchesCategory = _filterCategory == 'All' || meal.category == _filterCategory;
-        final matchesSearch = meal.name.toLowerCase().contains(query) || 
-                              meal.category.toLowerCase().contains(query);
+        final matchesCategory =
+            _filterCategory == 'All' || meal.category == _filterCategory;
+        final matchesSearch =
+            meal.name.toLowerCase().contains(query) ||
+            meal.category.toLowerCase().contains(query);
         return matchesCategory && matchesSearch;
       }).toList();
 
@@ -119,9 +121,9 @@ class _MealListScreenState extends State<MealListScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Search error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Search error: $e')));
       }
     }
   }
@@ -139,10 +141,12 @@ class _MealListScreenState extends State<MealListScreen> {
     try {
       final query = _searchController.text.toLowerCase();
       filteredMeals = _meals.where((meal) {
-        final matchesCategory = _filterCategory == 'All' || meal.category == _filterCategory;
-        final matchesSearch = query.isEmpty || 
-                              meal.name.toLowerCase().contains(query) ||
-                              meal.category.toLowerCase().contains(query);
+        final matchesCategory =
+            _filterCategory == 'All' || meal.category == _filterCategory;
+        final matchesSearch =
+            query.isEmpty ||
+            meal.name.toLowerCase().contains(query) ||
+            meal.category.toLowerCase().contains(query);
         return matchesCategory && matchesSearch;
       }).toList();
     } catch (e) {
@@ -169,7 +173,7 @@ class _MealListScreenState extends State<MealListScreen> {
                         : null,
                   ),
                 )
-              : const Text('My Meals', key: ValueKey('title')),
+              : const Text('DineDecide ', key: ValueKey('title')),
         ),
         centerTitle: true,
         leading: _isSearching
@@ -187,9 +191,8 @@ class _MealListScreenState extends State<MealListScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => SettingsScreen(
-                        onThemeChanged: widget.onThemeChanged,
-                      ),
+                      builder: (context) =>
+                          SettingsScreen(onThemeChanged: widget.onThemeChanged),
                     ),
                   );
                 },
@@ -350,9 +353,9 @@ class _MealListScreenState extends State<MealListScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to load meals: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to load meals: $e')));
       }
     }
   }
@@ -528,8 +531,6 @@ class _MealListScreenState extends State<MealListScreen> {
       _saveToStorage();
     }
   }
-
-
 
   // Create a helper function to build the filter bar
   Widget _buildFilterBar() {
