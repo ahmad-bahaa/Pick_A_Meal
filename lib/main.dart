@@ -7,10 +7,12 @@ import 'package:dinedecide/add_meal_screen.dart';
 import 'package:dinedecide/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import 'meal_details_screen.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:dinedecide/meal_details_screen.dart';
 
 void main() {
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   runApp(const MyApp());
 }
 
@@ -24,10 +26,17 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   ThemeMode _themeMode = ThemeMode.system;
 
+
   @override
-  void initState() {
-    super.initState();
-    _loadTheme();
+  void initState() {super.initState();
+  _loadTheme();
+  _initApp(); // Add this
+  }
+
+  Future<void> _initApp() async {
+    // Wait for loading or just yield
+    await Future.delayed(const Duration(seconds: 1));
+    FlutterNativeSplash.remove(); // Remove the splash screen
   }
 
   Future<void> _loadTheme() async {
@@ -47,7 +56,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Pick A Meal',
+      title: 'DineDecide',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
         useMaterial3: true,
@@ -173,7 +182,7 @@ class _MealListScreenState extends State<MealListScreen> {
                         : null,
                   ),
                 )
-              : const Text('DineDecide ', key: ValueKey('title')),
+              : const Text('DineDecide', key: ValueKey('title')),
         ),
         centerTitle: true,
         leading: _isSearching

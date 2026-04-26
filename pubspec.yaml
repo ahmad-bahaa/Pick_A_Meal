@@ -40,11 +40,11 @@ dependencies:
   cupertino_icons: ^1.0.8
   google_generative_ai: ^0.4.4
   intl: ^0.20.2
+  flutter_launcher_icons: ^0.14.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_launcher_icons: "^0.13.1"
 
   flutter_native_splash: ^2.4.0
 
@@ -59,11 +59,11 @@ dev_dependencies:
 # following page: https://dart.dev/tools/pub/pubspec
 flutter_launcher_icons:
   android: "launcher_icon"
-  ios: true
-  image_path: "assets/icon/logo.png"
+  ios: false
   remove_alpha_ios: true
+  image_path: "assets/icon/icon.png"
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/icon/logo.png"
+  adaptive_icon_foreground: "assets/icon/icon.png"
 
 flutter_native_splash:
   color: "#FFFFFF"

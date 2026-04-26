@@ -96,9 +96,9 @@ class _AddMealscreenState extends State<AddMealScreen> {
                         borderRadius: BorderRadius.circular(12),
                         image: _selectedImage != null
                             ? DecorationImage(
-                                image: FileImage(_selectedImage!),
-                                fit: BoxFit.cover,
-                              )
+                          image: FileImage(_selectedImage!),
+                          fit: BoxFit.cover,
+                        )
                             : null,
                       ),
                       child: _selectedImage == null
@@ -132,8 +132,8 @@ class _AddMealscreenState extends State<AddMealScreen> {
                   border: OutlineInputBorder(),
                 ),
                 items: mealCategories.where((c) => c != 'All').map((
-                  String category,
-                ) {
+                    String category,
+                    ) {
                   return DropdownMenuItem(
                     value: category,
                     child: Text(category),

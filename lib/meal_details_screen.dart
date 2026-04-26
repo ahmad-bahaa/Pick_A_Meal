@@ -2,9 +2,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'add_meal_screen.dart';
-import 'meal.dart';
-import 'gemini_service.dart';
+import 'package:dinedecide/add_meal_screen.dart';
+import 'package:dinedecide/meal.dart';
+import 'package:dinedecide/gemini_service.dart';
 
 class MealDetailsScreen extends StatefulWidget {
   final Meal meal;
