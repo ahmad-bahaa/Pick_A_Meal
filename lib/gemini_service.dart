@@ -4,8 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// A service to interact with Google Gemini AI framework for dietary queries.
 class GeminiService {
-  static const String _defaultApiKey =
-      'AIzaSyDXccsm_Hv3WDy37EBDB_Dqtqby1YQXrIU';
+  static const String _defaultApiKey = '';
 
   Future<GenerativeModel> _getModel() async {
     final prefs = await SharedPreferences.getInstance();
@@ -21,17 +20,23 @@ class GeminiService {
     );
   }
 
-  /// Generates a simple list of ingredients and step-by-step instructions for a given [mealName].
-  /// Returns a structured Map with 'ingredients' (List<dynamic>) and 'instructions' (String) keys.
+  /// Generates a simple list of ingredients, step-by-step instructions, and nutritional info for a given [mealName].
+  /// Returns a structured Map with 'ingredients', 'instructions', and 'nutrition' keys.
   Future<Map<String, dynamic>?> generateRecipe(String mealName) async {
     final prompt =
         '''
-As a professional culinary assistant, please provide the essential ingredients and very short step-by-step cooking instructions to prepare "$mealName". 
+As a professional culinary assistant, please provide the essential ingredients, very short step-by-step cooking instructions, and estimated nutritional information (per serving) to prepare "$mealName". 
 
 Adhere exactly to the following JSON structure without markdown wrapping:
 {
   "ingredients": ["1 cup rice", "2 cups water"],
-  "instructions": "1. Rinse rice.\\n2. Boil water.\\n3. Simmer for 20 minutes."
+  "instructions": "1. Rinse rice.\\n2. Boil water.\\n3. Simmer for 20 minutes.",
+  "nutrition": {
+    "calories": 200,
+    "protein": 5,
+    "carbs": 40,
+    "fats": 2
+  }
 }
 ''';
 

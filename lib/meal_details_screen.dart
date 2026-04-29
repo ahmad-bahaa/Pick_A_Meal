@@ -139,11 +139,13 @@ class _MealDetailsScreenState extends State<MealDetailsScreen> {
       if (data != null && mounted) {
         final List<String> newIngredients = List<String>.from(data['ingredients'] ?? []);
         final String newInstructions = data['instructions']?.toString() ?? "";
+        final nutritionData = data['nutrition'];
         
         setState(() {
           _currentMeal = _currentMeal.copyWith(
             ingredients: newIngredients,
             instructions: newInstructions,
+            nutrition: nutritionData != null ? Nutrition.fromMap(nutritionData) : null,
           );
         });
         
@@ -172,21 +174,108 @@ class _MealDetailsScreenState extends State<MealDetailsScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text("Delete Meal"),
+        title: const Text("Delete Meal"),
         content: Text(_currentMeal.isTemplate 
           ? "Are you sure you want to remove this meal from your library? (Scheduled plans will also be removed)"
           : "Are you sure you want to remove this meal from your plan?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text("Cancel"),
+            child: const Text("Cancel"),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
               Navigator.pop(context, 'delete');
             },
-            child: Text("Delete", style: TextStyle(color: Colors.red)),
+            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNutritionCard() {
+    final nutrition = _currentMeal.nutrition;
+    if (nutrition == null) return const SizedBox.shrink();
+
+    return Card(
+      elevation: 0,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: Theme.of(context).colorScheme.outlineVariant,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.analytics_outlined, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  "Nutritional Info",
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                ),
+                const Spacer(),
+                const Icon(Icons.local_fire_department, color: Colors.orange, size: 20),
+                const SizedBox(width: 4),
+                Text(
+                  "${nutrition.calories} kcal",
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildNutritionChip("Protein", nutrition.protein, Colors.blue),
+                  const SizedBox(width: 8),
+                  _buildNutritionChip("Carbs", nutrition.carbs, Colors.green),
+                  const SizedBox(width: 8),
+                  _buildNutritionChip("Fats", nutrition.fats, Colors.red),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNutritionChip(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          Text(
+            label,
+            style: TextStyle(
+              color: color.withValues(alpha: 0.8),
+              fontSize: 12,
+            ),
           ),
         ],
       ),
@@ -199,7 +288,7 @@ class _MealDetailsScreenState extends State<MealDetailsScreen> {
 
     return PopScope(
       canPop: false,
-      onPopInvoked: (bool didPop) {
+      onPopInvokedWithResult: (bool didPop, dynamic result) {
         if (didPop) return;
         Navigator.pop(context, _currentMeal);
       },
@@ -211,7 +300,7 @@ class _MealDetailsScreenState extends State<MealDetailsScreen> {
           ),
           actions: [
             IconButton(
-              icon: Icon(Icons.edit),
+              icon: const Icon(Icons.edit),
               onPressed: () async {
                 final updatedMeal = await Navigator.push(
                   context,
@@ -229,7 +318,7 @@ class _MealDetailsScreenState extends State<MealDetailsScreen> {
               },
             ),
             IconButton(
-              icon: Icon(Icons.delete, color: Colors.red),
+              icon: const Icon(Icons.delete, color: Colors.red),
               onPressed: () => _confirmDelete(context),
             ),
           ],
@@ -248,7 +337,7 @@ class _MealDetailsScreenState extends State<MealDetailsScreen> {
                           height: 300,
                           fit: BoxFit.cover,
                         )
-                      : Container(
+                      : const SizedBox(
                           height: 200,
                           width: 200,
                           child: Icon(Icons.restaurant, size: 200),
@@ -262,17 +351,17 @@ class _MealDetailsScreenState extends State<MealDetailsScreen> {
                   children: [
                     if (!_currentMeal.isTemplate) ...[
                        Container(
-                         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                          decoration: BoxDecoration(
                            color: Theme.of(context).colorScheme.secondaryContainer,
                            borderRadius: BorderRadius.circular(20),
                          ),
                          child: Text(
                            "Scheduled for: ${_currentMeal.slot} on ${_currentMeal.scheduledDate?.toLocal().toString().split(' ')[0]}",
-                           style: TextStyle(fontWeight: FontWeight.bold),
+                           style: const TextStyle(fontWeight: FontWeight.bold),
                          ),
                        ),
-                       SizedBox(height: 16),
+                       const SizedBox(height: 16),
                     ],
                     Text(
                       _currentMeal.name,
@@ -280,67 +369,68 @@ class _MealDetailsScreenState extends State<MealDetailsScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(height: 10),
-                    Divider(),
-                    SizedBox(height: 10),
-                    Text(
+                    const SizedBox(height: 10),
+                    const Divider(),
+                    const SizedBox(height: 10),
+                    const Text(
                       "Category",
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
                       _currentMeal.category.isNotEmpty == true
                           ? _currentMeal.category
                           : "No Category",
-                      style: TextStyle(fontSize: 16,),
+                      style: const TextStyle(fontSize: 16,),
                     ),
-                    SizedBox(height: 10),
-                    Divider(),
-                    SizedBox(height: 10),
-                    Text(
+                    const SizedBox(height: 10),
+                    const Divider(),
+                    const SizedBox(height: 10),
+                    const Text(
                       "Description",
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
                       _currentMeal.description?.isNotEmpty == true
                           ? _currentMeal.description!
                           : "No description provided for this meal.",
-                      style: TextStyle(fontSize: 16,),
+                      style: const TextStyle(fontSize: 16,),
                     ),
-                    SizedBox(height: 10),
-                    Divider(),
-                    
+                    const SizedBox(height: 10),
+                    const Divider(),
+                    const SizedBox(height: 10),
+                    _buildNutritionCard(),
                     if (!needsRecipe) ...[
-                      SizedBox(height: 10),
+                      const SizedBox(height: 10),
                       Text(
                         "Ingredients",
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
                       ),
-                      SizedBox(height: 8),
+                      const SizedBox(height: 8),
                       ..._currentMeal.ingredients!.map((item) => Padding(
                         padding: const EdgeInsets.symmetric(vertical: 4.0),
                         child: Row(
                           children: [
                             Icon(Icons.circle, size: 8, color: Theme.of(context).colorScheme.primary),
-                            SizedBox(width: 12),
-                            Expanded(child: Text(item, style: TextStyle(fontSize: 16))),
+                            const SizedBox(width: 12),
+                            Expanded(child: Text(item, style: const TextStyle(fontSize: 16))),
                           ],
                         ),
-                      )).toList(),
-                      SizedBox(height: 10),
-                      Divider(),
-                      SizedBox(height: 10),
+                      )),
+                      const SizedBox(height: 10),
+                      const Divider(),
+                      const SizedBox(height: 10),
                       Text(
                         "Instructions",
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary),
                       ),
-                      SizedBox(height: 8),
+                      const SizedBox(height: 8),
                       Text(
                         _currentMeal.instructions ?? "No instructions available.",
-                        style: TextStyle(fontSize: 16, height: 1.5),
+                        style: const TextStyle(fontSize: 16, height: 1.5),
                       ),
-                      SizedBox(height: 20),
+                      const SizedBox(height: 20),
                     ],
 
                     if (needsRecipe)

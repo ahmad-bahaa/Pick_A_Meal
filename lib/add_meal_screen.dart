@@ -125,7 +125,7 @@ class _AddMealscreenState extends State<AddMealScreen> {
               SizedBox(height: 15),
 
               DropdownButtonFormField<String>(
-                initialValue: _selectedCategory,
+                value: _selectedCategory,
 
                 decoration: InputDecoration(
                   labelText: 'Category',
@@ -161,7 +161,12 @@ class _AddMealscreenState extends State<AddMealScreen> {
                     imagePath: _selectedImage != null
                         ? _selectedImage!.path
                         : null,
-                    // imageUrl: imageController.text.isEmpty ? null : imageController.text,
+                    ingredients: widget.existingMeal?.ingredients,
+                    instructions: widget.existingMeal?.instructions,
+                    scheduledDate: widget.existingMeal?.scheduledDate,
+                    slot: widget.existingMeal?.slot,
+                    isTemplate: widget.existingMeal?.isTemplate ?? true,
+                    nutrition: widget.existingMeal?.nutrition,
                   );
                   Navigator.pop(context, updatedMeal);
                 },
