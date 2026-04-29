@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:dinedecide/meal.dart';
 import 'package:dinedecide/add_meal_screen.dart';
 import 'package:dinedecide/settings_screen.dart';
+import 'package:dinedecide/meal_planner_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
@@ -26,17 +27,16 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   ThemeMode _themeMode = ThemeMode.system;
 
-
   @override
-  void initState() {super.initState();
-  _loadTheme();
-  _initApp(); // Add this
+  void initState() {
+    super.initState();
+    _loadTheme();
+    _initApp();
   }
 
   Future<void> _initApp() async {
-    // Wait for loading or just yield
     await Future.delayed(const Duration(seconds: 1));
-    FlutterNativeSplash.remove(); // Remove the splash screen
+    FlutterNativeSplash.remove();
   }
 
   Future<void> _loadTheme() async {
@@ -114,6 +114,9 @@ class _MealListScreenState extends State<MealListScreen> {
       if (query.isEmpty) return;
 
       final results = _meals.where((meal) {
+        // Only search in library (template) meals
+        if (!meal.isTemplate) return false;
+        
         final matchesCategory =
             _filterCategory == 'All' || meal.category == _filterCategory;
         final matchesSearch =
@@ -130,16 +133,17 @@ class _MealListScreenState extends State<MealListScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Search error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Search error: $e')),
+        );
       }
     }
   }
 
   void _addMeal(Meal meal) {
     setState(() {
-      _meals.add(meal);
+      // Ensure added meals are marked as templates
+      _meals.add(meal.copyWith(isTemplate: true));
       _saveToStorage();
     });
   }
@@ -150,6 +154,9 @@ class _MealListScreenState extends State<MealListScreen> {
     try {
       final query = _searchController.text.toLowerCase();
       filteredMeals = _meals.where((meal) {
+        // Main screen only shows templates (the library)
+        if (!meal.isTemplate) return false;
+
         final matchesCategory =
             _filterCategory == 'All' || meal.category == _filterCategory;
         final matchesSearch =
@@ -172,7 +179,7 @@ class _MealListScreenState extends State<MealListScreen> {
                   controller: _searchController,
                   autofocus: true,
                   decoration: InputDecoration(
-                    hintText: 'Search meals...',
+                    hintText: 'Search library...',
                     border: InputBorder.none,
                     suffixIcon: _searchController.text.isNotEmpty
                         ? IconButton(
@@ -207,7 +214,17 @@ class _MealListScreenState extends State<MealListScreen> {
                 },
               ),
         actions: [
-          if (!_isSearching)
+          if (!_isSearching) ...[
+            IconButton(
+              icon: const Icon(Icons.calendar_month),
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const MealPlannerScreen()),
+                );
+                _loadFromStorage();
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.search),
               onPressed: () {
@@ -216,16 +233,19 @@ class _MealListScreenState extends State<MealListScreen> {
                 });
               },
             ),
-          IconButton(
-            icon: const Icon(Icons.casino), // Dice icon for randomness
-            onPressed: _meals.isEmpty ? null : () => _pickRandomMeal(context),
-          ),
+            IconButton(
+              icon: const Icon(Icons.casino),
+              onPressed: _meals.where((m) => m.isTemplate).isEmpty 
+                  ? null 
+                  : () => _pickRandomMeal(context),
+            ),
+          ]
         ],
       ),
-      body: _meals.isEmpty
-          ? Center(
+      body: _meals.where((m) => m.isTemplate).isEmpty
+          ? const Center(
               child: Text(
-                'No meals added yet!',
+                'No meals in library yet!',
                 style: TextStyle(color: Colors.grey),
               ),
             )
@@ -235,17 +255,15 @@ class _MealListScreenState extends State<MealListScreen> {
                 Expanded(
                   child: RefreshIndicator(
                     onRefresh: _handleRefresh,
-
                     child: filteredMeals.isEmpty
-                        ? Center(child: Text("No meals found in this category"))
+                        ? const Center(child: Text("No meals found in this category"))
                         : ListView.builder(
                             physics: const AlwaysScrollableScrollPhysics(),
-                            // Ensures the pull works even for short lists
                             itemCount: filteredMeals.length,
                             itemBuilder: (ctx, index) {
                               final meal = filteredMeals[index];
                               return Card(
-                                margin: EdgeInsets.symmetric(
+                                margin: const EdgeInsets.symmetric(
                                   horizontal: 15,
                                   vertical: 8,
                                 ),
@@ -262,9 +280,7 @@ class _MealListScreenState extends State<MealListScreen> {
                                     if (!mounted) return;
 
                                     if (result == 'delete') {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
+                                      ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
                                           content: Text("${meal.name} deleted"),
                                           behavior: SnackBarBehavior.floating,
@@ -272,18 +288,14 @@ class _MealListScreenState extends State<MealListScreen> {
                                       );
                                       _deleteMeal(meal.id);
                                     } else if (result is Meal) {
-                                      _updateMeal(
-                                        result,
-                                      ); // Call the update function
+                                      _updateMeal(result);
                                     }
                                   },
                                   leading: Hero(
                                     tag: meal.id,
                                     child: meal.imagePath != null
                                         ? ClipRRect(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
+                                            borderRadius: BorderRadius.circular(8),
                                             child: Image.file(
                                               File(meal.imagePath!),
                                               width: 50,
@@ -291,13 +303,11 @@ class _MealListScreenState extends State<MealListScreen> {
                                               fit: BoxFit.cover,
                                             ),
                                           )
-                                        : Icon(Icons.restaurant, size: 40),
+                                        : const Icon(Icons.restaurant, size: 40),
                                   ),
                                   title: Text(
                                     meal.name,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
                                   ),
                                   subtitle: Text(
                                     meal.description ?? 'No description',
@@ -314,22 +324,24 @@ class _MealListScreenState extends State<MealListScreen> {
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddMealScreen(context),
-        child: Icon(Icons.add),
+        child: const Icon(Icons.add),
       ),
     );
   }
 
   void _deleteMeal(String id) {
     setState(() {
+      // Deleting a template should probably delete all its scheduled instances too?
+      // Or we can just delete the template. Let's delete the template only for now.
       _meals.removeWhere((m) => m.id == id);
     });
-    _saveToStorage(); // Update local storage so it stays deleted
+    _saveToStorage();
   }
 
   void _showAddMealScreen(BuildContext context) async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => AddMealScreen()),
+      MaterialPageRoute(builder: (context) => const AddMealScreen()),
     );
 
     if (!mounted) return;
@@ -341,7 +353,6 @@ class _MealListScreenState extends State<MealListScreen> {
 
   Future<void> _saveToStorage() async {
     final prefs = await SharedPreferences.getInstance();
-    // Convert List<Meal> to List of Maps, then to a JSON String
     final String encodedData = jsonEncode(
       _meals.map((meal) => meal.toMap()).toList(),
     );
@@ -362,45 +373,42 @@ class _MealListScreenState extends State<MealListScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to load meals: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to load meals: $e')),
+        );
       }
     }
   }
 
   Future<void> _handleRefresh() async {
-    // 1. Check if we actually have meals
-    if (_meals.isEmpty) {
+    final libraryMeals = _meals.where((m) => m.isTemplate).toList();
+    if (libraryMeals.isEmpty) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Add some meals first!")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Add some meals first!")),
+      );
       return;
     }
 
-    // 2. Simulate "picking" time (the spinner will stay visible during this)
-    await Future.delayed(Duration(milliseconds: 1200));
+    await Future.delayed(const Duration(milliseconds: 1200));
 
     if (!mounted) return;
 
-    // 3. Pick the random meal
-    final randomMeal = _meals[Random().nextInt(_meals.length)];
-
-    // 4. Show the result dialog
-    // We don't need to 'await' this so the refresh spinner can disappear immediately
+    final randomMeal = libraryMeals[Random().nextInt(libraryMeals.length)];
     _showResultDialog(context, randomMeal);
   }
 
   void _pickRandomMeal(BuildContext context) async {
-    // 1. Show a "Picking..." visual
+    final libraryMeals = _meals.where((m) => m.isTemplate).toList();
+    if (libraryMeals.isEmpty) return;
+
     showDialog(
       context: context,
-      barrierDismissible: false, // User can't click away while "picking"
-      builder: (ctx) => Center(
+      barrierDismissible: false,
+      builder: (ctx) => const Center(
         child: Card(
           child: Padding(
-            padding: const EdgeInsets.all(20.0),
+            padding: EdgeInsets.all(20.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -417,18 +425,13 @@ class _MealListScreenState extends State<MealListScreen> {
       ),
     );
 
-    // 2. Wait for a moment to simulate "thinking"
-    await Future.delayed(Duration(milliseconds: 1500));
+    await Future.delayed(const Duration(milliseconds: 1500));
 
     if (!mounted) return;
 
-    // 3. Close the "Picking" dialog
     Navigator.pop(context);
 
-    // 4. Select a random meal
-    final randomMeal = _meals[Random().nextInt(_meals.length)];
-
-    // 5. Show the Result Dialog
+    final randomMeal = libraryMeals[Random().nextInt(libraryMeals.length)];
     _showResultDialog(context, randomMeal);
   }
 
@@ -436,28 +439,20 @@ class _MealListScreenState extends State<MealListScreen> {
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
-      // Tap background to close
       barrierLabel: 'Dismiss',
       barrierColor: Colors.black54,
-      // Standard dimmed background
       transitionDuration: const Duration(milliseconds: 400),
-      // A snappy 0.4s animation
-      // pageBuilder is required but not used here because we use transitionBuilder
       pageBuilder: (ctx, anim1, anim2) => const SizedBox(),
       transitionBuilder: (ctx, anim1, anim2, child) {
-        // Create a "bouncy" curve for the pop effect
         final curvedValue = CurvedAnimation(
           parent: anim1,
           curve: Curves.easeOutBack,
         );
 
-        // Combine Fade and Scale for a smooth entrance
         return ScaleTransition(
           scale: Tween<double>(begin: 0.5, end: 1.0).animate(curvedValue),
-          // Grow from 50% to 100% size
           child: FadeTransition(
-            opacity: anim1, // Fade in from transparent to opaque
-            // This is the actual dialog content from before
+            opacity: anim1,
             child: AlertDialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
@@ -466,9 +461,8 @@ class _MealListScreenState extends State<MealListScreen> {
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Image Header
                   ClipRRect(
-                    borderRadius: BorderRadius.vertical(
+                    borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(20),
                     ),
                     child: meal.imagePath != null
@@ -481,21 +475,21 @@ class _MealListScreenState extends State<MealListScreen> {
                         : Container(
                             height: 100,
                             color: Colors.green[100],
-                            child: Icon(Icons.restaurant, size: 50),
+                            child: const Icon(Icons.restaurant, size: 50),
                           ),
                   ),
                   Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       children: [
-                        Text(
+                        const Text(
                           "How about this?",
                           style: TextStyle(color: Colors.grey),
                         ),
-                        SizedBox(height: 5),
+                        const SizedBox(height: 5),
                         Text(
                           meal.name,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                           ),
@@ -508,12 +502,11 @@ class _MealListScreenState extends State<MealListScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: Text("Maybe later"),
+                  child: const Text("Maybe later"),
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    Navigator.pop(ctx); // Close dialog
-                    // Navigate to Details
+                    Navigator.pop(ctx);
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -521,7 +514,7 @@ class _MealListScreenState extends State<MealListScreen> {
                       ),
                     );
                   },
-                  child: Text("View Details"),
+                  child: const Text("View Details"),
                 ),
               ],
             ),
@@ -541,11 +534,10 @@ class _MealListScreenState extends State<MealListScreen> {
     }
   }
 
-  // Create a helper function to build the filter bar
   Widget _buildFilterBar() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
       child: Row(
         children: mealCategories.map((category) {
           return Padding(

@@ -1,10 +1,12 @@
 import 'dart:convert';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dinedecide/add_meal_screen.dart';
 import 'package:dinedecide/meal.dart';
 import 'package:dinedecide/gemini_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MealDetailsScreen extends StatefulWidget {
   final Meal meal;
@@ -31,15 +33,101 @@ class _MealDetailsScreenState extends State<MealDetailsScreen> {
     if (mealString != null) {
       final List<dynamic> decodedData = jsonDecode(mealString);
       final List<Meal> meals = decodedData.map((e) => Meal.fromMap(e)).toList();
-      final index = meals.indexWhere((m) => m.id == _currentMeal.id);
-      if (index != -1) {
-        meals[index] = _currentMeal;
-        await prefs.setString('user_meals', jsonEncode(meals.map((m) => m.toMap()).toList()));
+      
+      if (_currentMeal.isTemplate) {
+        // Update template and ALL its scheduled instances
+        for (int i = 0; i < meals.length; i++) {
+          if (meals[i].id == _currentMeal.id) {
+             meals[i] = _currentMeal;
+          } else if (!meals[i].isTemplate && meals[i].id.startsWith("${_currentMeal.id}_")) {
+             // Keep the scheduled info but update the meal details
+             meals[i] = _currentMeal.copyWith(
+               id: meals[i].id,
+               isTemplate: false,
+               scheduledDate: meals[i].scheduledDate,
+               slot: meals[i].slot,
+             );
+          }
+        }
+      } else {
+        // Update only this specific instance
+        final index = meals.indexWhere((m) => m.id == _currentMeal.id);
+        if (index != -1) {
+          meals[index] = _currentMeal;
+        }
       }
+      
+      await prefs.setString('user_meals', jsonEncode(meals.map((m) => m.toMap()).toList()));
     }
   }
 
+  Future<void> _launchUrl() async {
+    final Uri url = Uri.parse('https://aistudio.google.com/app/apikey');
+    if (!await launchUrl(url)) {
+      throw Exception('Could not launch $url');
+    }
+  }
+
+  Future<String?> _showApiKeyDialog() async {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text("API Key Required"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            RichText(
+              text: TextSpan(
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface, fontSize: 14),
+                children: [
+                  const TextSpan(text: "To use AI features, please provide your Gemini API key. You can get one for free at "),
+                  TextSpan(
+                    text: "Google AI Studio",
+                    style: const TextStyle(color: Colors.blue, decoration: TextDecoration.underline),
+                    recognizer: TapGestureRecognizer()..onTap = _launchUrl,
+                  ),
+                  const TextSpan(text: "."),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: "API Key",
+                border: OutlineInputBorder(),
+                hintText: "Enter your Gemini API key",
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text("Save"),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _generateRecipe() async {
+    final prefs = await SharedPreferences.getInstance();
+    String? apiKey = prefs.getString('gemini_api_key');
+
+    if (apiKey == null || apiKey.isEmpty) {
+      apiKey = await _showApiKeyDialog();
+      if (apiKey == null || apiKey.isEmpty) return;
+      await prefs.setString('gemini_api_key', apiKey);
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -49,7 +137,6 @@ class _MealDetailsScreenState extends State<MealDetailsScreen> {
       final data = await service.generateRecipe(_currentMeal.name);
       
       if (data != null && mounted) {
-        // Extract dynamically retrieved JSON data safely
         final List<String> newIngredients = List<String>.from(data['ingredients'] ?? []);
         final String newInstructions = data['instructions']?.toString() ?? "";
         
@@ -81,13 +168,14 @@ class _MealDetailsScreenState extends State<MealDetailsScreen> {
     }
   }
 
-  // Confirmation Dialog
   void _confirmDelete(BuildContext context) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text("Delete Meal"),
-        content: Text("Are you sure you want to remove this meal?"),
+        content: Text(_currentMeal.isTemplate 
+          ? "Are you sure you want to remove this meal from your library? (Scheduled plans will also be removed)"
+          : "Are you sure you want to remove this meal from your plan?"),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -95,11 +183,8 @@ class _MealDetailsScreenState extends State<MealDetailsScreen> {
           ),
           TextButton(
             onPressed: () {
-              Navigator.pop(ctx); // Close dialog
-              Navigator.pop(
-                context,
-                'delete',
-              ); // Return 'delete' signal to main screen
+              Navigator.pop(ctx);
+              Navigator.pop(context, 'delete');
             },
             child: Text("Delete", style: TextStyle(color: Colors.red)),
           ),
@@ -139,7 +224,6 @@ class _MealDetailsScreenState extends State<MealDetailsScreen> {
                   setState(() {
                     _currentMeal = updatedMeal;
                   });
-                  // also update storage since we edited it
                   await _updateLocalStorage();
                 }
               },
@@ -167,7 +251,6 @@ class _MealDetailsScreenState extends State<MealDetailsScreen> {
                       : Container(
                           height: 200,
                           width: 200,
-                          // color: Colors.grey[100],
                           child: Icon(Icons.restaurant, size: 200),
                         ),
                 ),
@@ -177,6 +260,20 @@ class _MealDetailsScreenState extends State<MealDetailsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (!_currentMeal.isTemplate) ...[
+                       Container(
+                         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                         decoration: BoxDecoration(
+                           color: Theme.of(context).colorScheme.secondaryContainer,
+                           borderRadius: BorderRadius.circular(20),
+                         ),
+                         child: Text(
+                           "Scheduled for: ${_currentMeal.slot} on ${_currentMeal.scheduledDate?.toLocal().toString().split(' ')[0]}",
+                           style: TextStyle(fontWeight: FontWeight.bold),
+                         ),
+                       ),
+                       SizedBox(height: 16),
+                    ],
                     Text(
                       _currentMeal.name,
                       style: Theme.of(context).textTheme.headlineMedium?.copyWith(

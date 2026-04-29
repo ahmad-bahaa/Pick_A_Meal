@@ -1,5 +1,7 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, required this.onThemeChanged});
@@ -11,7 +13,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final TextEditingController _apiKeyController = TextEditingController();
+  String _apiKey = '';
   ThemeMode _currentThemeMode = ThemeMode.system;
 
   @override
@@ -23,7 +25,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _apiKeyController.text = prefs.getString('gemini_api_key') ?? '';
+      _apiKey = prefs.getString('gemini_api_key') ?? '';
       final themeIndex = prefs.getInt('theme_mode') ?? 0;
       _currentThemeMode = ThemeMode.values[themeIndex];
     });
@@ -32,12 +34,80 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _saveApiKey(String value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('gemini_api_key', value);
+    setState(() {
+      _apiKey = value;
+    });
   }
 
   Future<void> _saveThemeMode(ThemeMode mode) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('theme_mode', mode.index);
     widget.onThemeChanged(mode);
+  }
+
+  Future<void> _launchUrl() async {
+    final Uri url = Uri.parse('https://aistudio.google.com/app/apikey');
+    if (!await launchUrl(url)) {
+      throw Exception('Could not launch $url');
+    }
+  }
+
+  void _showApiKeyDialog() {
+    final controller = TextEditingController(text: _apiKey);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Gemini API Key'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            RichText(
+              text: TextSpan(
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: 14,
+                ),
+                children: [
+                  const TextSpan(text: "Get your free API key at "),
+                  TextSpan(
+                    text: "Google AI Studio",
+                    style: const TextStyle(
+                      color: Colors.blue,
+                      decoration: TextDecoration.underline,
+                    ),
+                    recognizer: TapGestureRecognizer()..onTap = _launchUrl,
+                  ),
+                  const TextSpan(text: "."),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'API Key',
+                border: OutlineInputBorder(),
+                hintText: 'Enter your API key',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              _saveApiKey(controller.text.trim());
+              Navigator.pop(context);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -72,19 +142,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const Divider(),
           const ListTile(
-            title: Text('API Configuration', style: TextStyle(fontWeight: FontWeight.bold)),
+            title: Text('AI Configuration', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: TextField(
-              controller: _apiKeyController,
-              decoration: const InputDecoration(
-                labelText: 'Gemini API Key',
-                hintText: 'Enter your Gemini API key',
-                helperText: 'Using your own key avoids service limits.',
-              ),
-              onChanged: _saveApiKey,
-            ),
+          ListTile(
+            leading: const Icon(Icons.vpn_key),
+            title: const Text('Gemini API Key'),
+            subtitle: Text(_apiKey.isEmpty ? 'Not set' : '••••••••••••••••'),
+            trailing: const Icon(Icons.edit),
+            onTap: _showApiKeyDialog,
           ),
           const Divider(),
           const ListTile(
@@ -93,17 +158,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const ListTile(
             leading: Icon(Icons.person),
             title: Text('Developer Name'),
-            subtitle: Text('Ahmad Bahaa'), // Replace with actual name if known, but user said "My name"
+            subtitle: Text('Ahmad Bahaa'),
           ),
           const ListTile(
             leading: Icon(Icons.phone),
             title: Text('Phone Number'),
-            subtitle: Text('+201126052979'), // Placeholder
+            subtitle: Text('+201126052979'),
           ),
           const ListTile(
             leading: Icon(Icons.email),
             title: Text('Email'),
-            subtitle: Text('Ahmad.Bahaa.Scr@gmail.com'), // Placeholder
+            subtitle: Text('Ahmad.Bahaa.Scr@gmail.com'),
           ),
         ],
       ),

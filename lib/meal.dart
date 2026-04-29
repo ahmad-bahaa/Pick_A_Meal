@@ -17,6 +17,9 @@ class Meal {
   final String category;
   final List<String>? ingredients;
   final String? instructions;
+  final DateTime? scheduledDate;
+  final String? slot; // e.g., 'Breakfast', 'Lunch', 'Dinner'
+  final bool isTemplate; // true if it's in the main library, false if it's a scheduled instance
 
   const Meal({
     required this.id,
@@ -26,6 +29,9 @@ class Meal {
     this.category = 'Other',
     this.ingredients,
     this.instructions,
+    this.scheduledDate,
+    this.slot,
+    this.isTemplate = true,
   });
 
   Meal copyWith({
@@ -36,6 +42,9 @@ class Meal {
     String? category,
     List<String>? ingredients,
     String? instructions,
+    DateTime? scheduledDate,
+    String? slot,
+    bool? isTemplate,
   }) {
     return Meal(
       id: id ?? this.id,
@@ -45,6 +54,9 @@ class Meal {
       category: category ?? this.category,
       ingredients: ingredients ?? this.ingredients,
       instructions: instructions ?? this.instructions,
+      scheduledDate: scheduledDate ?? this.scheduledDate,
+      slot: slot ?? this.slot,
+      isTemplate: isTemplate ?? this.isTemplate,
     );
   }
 
@@ -58,6 +70,9 @@ class Meal {
       'description': description,
       'ingredients': ingredients,
       'instructions': instructions,
+      'scheduledDate': scheduledDate?.toIso8601String(),
+      'slot': slot,
+      'isTemplate': isTemplate,
     };
   }
 
@@ -73,6 +88,11 @@ class Meal {
           ? List<String>.from(map['ingredients'] as List)
           : null,
       instructions: map['instructions'] as String?,
+      scheduledDate: map['scheduledDate'] != null
+          ? DateTime.parse(map['scheduledDate'] as String)
+          : null,
+      slot: map['slot'] as String?,
+      isTemplate: map['isTemplate'] as bool? ?? true,
     );
   }
 }
